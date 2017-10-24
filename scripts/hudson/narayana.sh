@@ -190,9 +190,9 @@ function init_test_options {
     [ $JTA_CDI_TESTS ] || JTA_CDI_TESTS=0 # JTA CDI Tests
     [ $JTA_AS_TESTS ] || JTA_AS_TESTS=0 # JTA AS tests
     [ $QA_TESTS ] || QA_TESTS=0 # QA test suite
-    [ $SUN_ORB ] || SUN_ORB=1 # Run QA test suite against the Sun orb
-    [ $OPENJDK_ORB ] || OPENJDK_ORB=1 # Run QA test suite against the openjdk orb
-    [ $JAC_ORB ] || JAC_ORB=1 # Run QA test suite against JacORB
+    [ $SUN_ORB ] || SUN_ORB=0 # Run QA test suite against the Sun orb
+    [ $OPENJDK_ORB ] || OPENJDK_ORB=0 # Run QA test suite against the openjdk orb
+    [ $JAC_ORB ] || JAC_ORB=0 # Run QA test suite against JacORB
     [ $txbridge ] || txbridge=0 # bridge tests
     [ $PERF_TESTS ] || PERF_TESTS=0 # benchmarks
     [ $REDUCE_SPACE ] || REDUCE_SPACE=1 # Whether to reduce the space used
@@ -477,11 +477,7 @@ function blacktie {
   fi
 
   # BUILD BLACKTIE
-  if [ $JAVA_VERSION = "9" ]; then
-    MAVEN_OPTS="-Xms1303m -Xmx1303m" ./build.sh -f blacktie/pom.xml clean install $ORBARG -Djbossas.ip.addr=$JBOSSAS_IP_ADDR "$@"
-  else
-    ./build.sh -f blacktie/pom.xml clean install $ORBARG -Djbossas.ip.addr=$JBOSSAS_IP_ADDR "$@"
-  fi
+  ./build.sh -f blacktie/pom.xml clean install $ORBARG -Djbossas.ip.addr=$JBOSSAS_IP_ADDR "$@"
 
   if [ "$?" != "0" ]; then
   	ps -f
@@ -546,9 +542,9 @@ function xts_tests {
     [ $? = 0 ] || fatal "XTS localjunit WSTX11 build failed"
     ./build.sh -f XTS/localjunit/WSTFSC07-interop/pom.xml -P$ARQ_PROF $CODE_COVERAGE_ARGS "$@" $IPV6_OPTS -Dorg.jboss.remoting-jmx.timeout=300 clean install "$@"
     [ $? = 0 ] || fatal "XTS localjunit WSTFSC07 build failed"
-    ./build.sh -f XTS/localjunit/xtstest/pom.xml -P$ARQ_PROF "$@" $IPV6_OPTS -Dorg.jboss.remoting-jmx.timeout=300 clean install "$@"
+    ./build.sh -f XTS/localjunit/xtstest/pom.xml -P$ARQ_PROF $CODE_COVERAGE_ARGS "$@" $IPV6_OPTS -Dorg.jboss.remoting-jmx.timeout=300 clean install "$@"
     [ $? = 0 ] || fatal "XTS localjunit xtstest build failed"
-    ./build.sh -f XTS/localjunit/crash-recovery-tests/pom.xml -P$ARQ_PROF "$@" $IPV6_OPTS -Dorg.jboss.remoting-jmx.timeout=300 clean install "$@"
+    ./build.sh -f XTS/localjunit/crash-recovery-tests/pom.xml -P$ARQ_PROF $CODE_COVERAGE_ARGS "$@" $IPV6_OPTS -Dorg.jboss.remoting-jmx.timeout=300 clean install "$@"
     [ $? = 0 ] || fatal "XTS localjunit crash-recovery-tests build failed"
   fi
 
@@ -556,7 +552,7 @@ function xts_tests {
   if [ $ran_crt = 1 ]; then
     if [[ $# == 0 || $# > 0 && "$1" != "-DskipTests" ]]; then
       (cd XTS/localjunit/crash-recovery-tests && java -cp target/classes/ com.arjuna.qa.simplifylogs.SimplifyLogs ./target/log/ ./target/log-simplified)
-      if [[ $? != 0 && $ISIBM != 0 ]]; then
+      if [[ $? != 0 && $ISIBM != 0 && -z $CODE_COVERAGE_ARGS ]]; then
         fatal "Simplify CRASH RECOVERY logs failed"
       fi
     fi
@@ -813,7 +809,7 @@ function qa_tests {
     qa_tests_once "orb=ibmorb" "$@" # run qa against the Sun orb
     ok3=$?
   else
-    if [ $JAVA_VERSION = "9" -o $SUN_ORB = 1 ]; then
+    if [ $SUN_ORB = 1 ]; then
       qa_tests_once "orb=idlj" "$@" # run qa against the Sun orb
       ok2=$?
     fi
